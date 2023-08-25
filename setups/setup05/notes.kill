@@ -1,0 +1,1 @@
+trained for 40k on just voxel GT without elastic augmentation, then on just rasterized GT with elastic augmentation. Seems to have gotten stuck. Killing in favor of #6.
