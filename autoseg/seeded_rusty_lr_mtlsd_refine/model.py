@@ -8,37 +8,38 @@ from skimage.util import random_noise
 
 
 neighborhood: list[list[int]] = [
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-        [2, 0, 0],
-        [0, 2, 0],
-        [0, 0, 2],
-        [4, 0, 0],
-        [0, 4, 0],
-        [0, 0, 4],
-        [8, 0, 0],
-        [0, 8, 0],
-        [0, 0, 8],
-        # [0, -3, -7],
-        # [0, -6, -6],
-        # [0, -7, -3],
-        # [0, -7, 3],
-        # [0, -6, 6],
-        # [0, -3, 7],
-        # [-3, 0, -7],
-        # [-6, 0, -6],
-        # [-7, 0, -3],
-        # [-7, 0, 3],
-        # [-6, 0, 6],
-        # [-3, 0, 7],
-        # [-3, -7, 0],
-        # [-6, -6, 0],
-        # [-7, -3, 0],
-        # [-7, 3, 0],
-        # [-6, 6, 0],
-        # [-3, 7, 0]
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+    [2, 0, 0],
+    [0, 2, 0],
+    [0, 0, 2],
+    [4, 0, 0],
+    [0, 4, 0],
+    [0, 0, 4],
+    [8, 0, 0],
+    [0, 8, 0],
+    [0, 0, 8],
+    # [0, -3, -7],
+    # [0, -6, -6],
+    # [0, -7, -3],
+    # [0, -7, 3],
+    # [0, -6, 6],
+    # [0, -3, 7],
+    # [-3, 0, -7],
+    # [-6, 0, -6],
+    # [-7, 0, -3],
+    # [-7, 0, 3],
+    # [-6, 0, 6],
+    # [-3, 0, 7],
+    # [-3, -7, 0],
+    # [-6, -6, 0],
+    # [-7, -3, 0],
+    # [-7, 3, 0],
+    # [-6, 6, 0],
+    # [-3, 7, 0]
 ]
+
 
 class WeightedMTLSD_MSELoss(torch.nn.MSELoss):
     def __init__(self, aff_lambda=1.0) -> None:
@@ -79,7 +80,9 @@ class MTLSDModel(torch.nn.Module):
 
         self.unet = unet
         self.lsd_head = ConvPass(num_fmaps, 10, [[1, 1, 1]], activation="Sigmoid")
-        self.aff_head = ConvPass(num_fmaps, len(neighborhood), [[1, 1, 1]], activation="Sigmoid")
+        self.aff_head = ConvPass(
+            num_fmaps, len(neighborhood), [[1, 1, 1]], activation="Sigmoid"
+        )
 
     def forward(self, input):
         x = self.unet(input)
@@ -94,7 +97,6 @@ class SmoothArray(gp.BatchFilter):
         self.range = blur_range
 
     def process(self, batch, request):
-
         array = batch[self.array].data
 
         assert len(array.shape) == 3
@@ -105,9 +107,9 @@ class SmoothArray(gp.BatchFilter):
         for z in range(array.shape[0]):
             array_sec = array[z]
 
-            array[z] = np.array(
-                    gaussian_filter(array_sec, sigma=sigma)
-            ).astype(array_sec.dtype)
+            array[z] = np.array(gaussian_filter(array_sec, sigma=sigma)).astype(
+                array_sec.dtype
+            )
 
         batch[self.array].data = array
 
@@ -129,25 +131,28 @@ class RandomNoiseAugment(gp.BatchFilter):
         return deps
 
     def process(self, batch, request):
-
         raw = batch.arrays[self.array]
 
-        mode = random.choice(["gaussian","poisson","none", "none"])
+        mode = random.choice(["gaussian", "poisson", "none", "none"])
 
         if mode != "none":
-            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, "Noise augmentation requires float types for the raw array (not " + str(raw.data.dtype) + "). Consider using Normalize before."
+            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, (
+                "Noise augmentation requires float types for the raw array (not "
+                + str(raw.data.dtype)
+                + "). Consider using Normalize before."
+            )
             if self.clip:
-                assert raw.data.min() >= -1 and raw.data.max() <= 1, "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
+                assert (
+                    raw.data.min() >= -1 and raw.data.max() <= 1
+                ), "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
             raw.data = random_noise(
-                raw.data,
-                mode=mode,
-                seed=self.seed,
-                clip=self.clip,
-                **self.kwargs).astype(raw.data.dtype)
+                raw.data, mode=mode, seed=self.seed, clip=self.clip, **self.kwargs
+            ).astype(raw.data.dtype)
+
 
 in_channels = 1
-num_fmaps = 12#12
-fmap_inc_factor = 3#3
+num_fmaps = 12  # 12
+fmap_inc_factor = 3  # 3
 downsample_factors: list = [(2, 2, 2), (2, 2, 2), (2, 2, 2)]
 
 unet = UNet(
@@ -156,7 +161,7 @@ unet = UNet(
     fmap_inc_factor=fmap_inc_factor,
     downsample_factors=downsample_factors,
     constant_upsample=True,
-    num_heads=2
+    num_heads=2,
 )
 
 mini_mod = MTLSDModel(unet, num_fmaps)

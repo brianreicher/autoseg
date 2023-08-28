@@ -14,15 +14,14 @@ def correct_blocks(
     seg_name="pred_seg",
     num_workers=50,
 ):
-
     raster_ds = open_ds(raster_file, raster_name)
     voxel_size = raster_ds.voxel_size
     dtype = raster_ds.dtype
     frag_ds = open_ds(frag_file, frag_name)
     total_roi = frag_ds.roi
 
-    write_roi = daisy.Roi((0,)*3,daisy.Coordinate(frag_ds.chunk_shape))
-    read_roi = write_roi.grow(8,8)
+    write_roi = daisy.Roi((0,) * 3, daisy.Coordinate(frag_ds.chunk_shape))
+    read_roi = write_roi.grow(8, 8)
 
     write_roi = write_roi * voxel_size
     read_roi = read_roi * voxel_size
@@ -59,9 +58,7 @@ def correct_blocks(
 
             # Now make the unlabelled mask
             unlabelled_mask = (seg_array > 0).astype(np.uint8)
-            unlabelled_mask_ds = open_ds(
-                seg_file, "pred_unlabelled_mask", mode="a"
-            )
+            unlabelled_mask_ds = open_ds(seg_file, "pred_unlabelled_mask", mode="a")
             unlabelled_mask_ds[block.write_roi] = unlabelled_mask
 
             return True
@@ -110,7 +107,7 @@ def correct_blocks(
         process_function=worker,
         num_workers=num_workers,
         max_retries=3,
-        fit="shrink"
+        fit="shrink",
     )
 
     # run task
@@ -119,6 +116,4 @@ def correct_blocks(
 
 
 if __name__ == "__main__":
-    correct_blocks(
-        frag_name="frags"
-    )
+    correct_blocks(frag_name="frags")

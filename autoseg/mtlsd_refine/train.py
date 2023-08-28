@@ -29,7 +29,6 @@ iteration = "latest"
 
 
 def get_segmentation():
-
     affs_ds = f"pred_affs_{iteration}"
 
     # predict affs
@@ -38,12 +37,13 @@ def get_segmentation():
         raw_file=raw_file,
         raw_dataset=raw_dataset,
         out_file=out_file,
-        out_datasets=[(affs_ds,3)],
+        out_datasets=[(affs_ds, 3)],
         num_workers=1,
-        n_gpu=1)
+        n_gpu=1,
+    )
 
     # watershed
-    f = zarr.open(out_file, 'a')
+    f = zarr.open(out_file, "a")
 
     affs = f[affs_ds][:]
     affs = (affs / np.max(affs)).astype(np.float32)
@@ -52,15 +52,14 @@ def get_segmentation():
     frags = watershed_from_affinities(affs)[0]
 
     print("writing frags")
-    f['frags'] = frags
-    f['frags'].attrs['offset'] = f[affs_ds].attrs['offset']
-    f['frags'].attrs['resolution'] = f[affs_ds].attrs['resolution']
+    f["frags"] = frags
+    f["frags"].attrs["offset"] = f[affs_ds].attrs["offset"]
+    f["frags"].attrs["resolution"] = f[affs_ds].attrs["resolution"]
 
     # epsilon agglom
     epsilon = 0.1
     for threshold in [epsilon]:
-
-        print(f'segmenting {threshold}')
+        print(f"segmenting {threshold}")
 
         thresholds = [threshold]
         segmentations = waterz.agglomerate(
@@ -71,16 +70,15 @@ def get_segmentation():
 
         segmentation = next(segmentations)
 
-        f[f'frags_{epsilon}'] = segmentation
-        f[f'frags_{epsilon}'].attrs['offset'] = f[affs_ds].attrs['offset']
-        f[f'frags_{epsilon}'].attrs['resolution'] = f[affs_ds].attrs['resolution']
+        f[f"frags_{epsilon}"] = segmentation
+        f[f"frags_{epsilon}"].attrs["offset"] = f[affs_ds].attrs["offset"]
+        f[f"frags_{epsilon}"].attrs["resolution"] = f[affs_ds].attrs["resolution"]
 
     # correct seg with skeletons
     correct_blocks(frag_name=f"frags_{epsilon}")
 
 
 def pipeline(iterations, warmup=5000, save_every=1000):
-    
     raw = gp.ArrayKey("RAW")
     labels = gp.ArrayKey("LABELS")
     labels_mask = gp.ArrayKey("LABELS_MASK")
@@ -88,19 +86,19 @@ def pipeline(iterations, warmup=5000, save_every=1000):
     pred_affs = gp.ArrayKey("PRED_AFFS")
     gt_affs = gp.ArrayKey("GT_AFFS")
     affs_weights = gp.ArrayKey("AFFS_WEIGHTS")
-    gt_affs_mask = gp.ArrayKey("AFFS_MASK") 
+    gt_affs_mask = gp.ArrayKey("AFFS_MASK")
     pred_lsds = gp.ArrayKey("PRED_LSDS")
     gt_lsds = gp.ArrayKey("GT_LSDS")
     gt_lsds_mask = gp.ArrayKey("GT_LSDS_MASK")
 
     model = MTLSDModel(unet, num_fmaps)
-    loss = WeightedMTLSD_MSELoss()#aff_lambda=0)
+    loss = WeightedMTLSD_MSELoss()  # aff_lambda=0)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.5e-4, betas=(0.95, 0.999))
 
-    #increase = 8 * 3
-    #input_shape = [132 + increase] * 3
-    #output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
-    #print(input_shape, output_shape)
+    # increase = 8 * 3
+    # input_shape = [132 + increase] * 3
+    # output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
+    # print(input_shape, output_shape)
     input_shape = [156] * 3
     output_shape = [64] * 3
 
@@ -155,9 +153,8 @@ def pipeline(iterations, warmup=5000, save_every=1000):
     )
     gt_source += gp.MergeProvider()
     gt_source += gp.RandomLocation(mask=labels_mask, min_masked=0.5)
-   
+
     def get_training_pipeline():
-        
         request = gp.BatchRequest()
 
         request.add(raw, input_size)
@@ -192,7 +189,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
 
         training_pipeline += gp.IntensityAugment(raw, 0.9, 1.1, -0.1, 0.1)
 
-        training_pipeline += SmoothArray(raw, (0.0,1.0))
+        training_pipeline += SmoothArray(raw, (0.0, 1.0))
 
         training_pipeline += AddLocalShapeDescriptor(
             labels,
@@ -212,7 +209,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
             labels_mask=labels_mask,
             unlabelled=unlabelled,
             affinities_mask=gt_affs_mask,
-            dtype=np.float32
+            dtype=np.float32,
         )
 
         training_pipeline += gp.BalanceLabels(gt_affs, affs_weights, mask=gt_affs_mask)
@@ -251,11 +248,9 @@ def pipeline(iterations, warmup=5000, save_every=1000):
                 pred_lsds: "pred_lsds",
                 gt_affs: "gt_affs",
                 pred_affs: "pred_affs",
-                affs_weights: "affs_weights"
+                affs_weights: "affs_weights",
             },
-            dataset_dtypes={
-                gt_affs: np.float32
-            },
+            dataset_dtypes={gt_affs: np.float32},
             output_filename="batch_{iteration}.zarr",
             every=save_every,
         )
@@ -271,10 +266,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
         model.train()
     elif warmup > 0:
         training_pipeline, request = get_training_pipeline()
-        pipeline = (
-            gt_source
-            + training_pipeline
-        )
+        pipeline = gt_source + training_pipeline
         with gp.build(pipeline):
             for i in trange(warmup):
                 pipeline.request_batch(request)
@@ -298,6 +290,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
         # Make segmentation predictions
         get_segmentation()
         model.train()
+
 
 if __name__ == "__main__":
     pipeline(20000, None, 10000)

@@ -43,7 +43,6 @@ def predict_task(
     input_shape = [132 + increase] * 3
     output_shape = mini_mod.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
 
-
     print(input_shape, output_shape)
     voxel_size = gp.Coordinate((voxel_size,) * 3)
     input_size: gp.Coordinate = gp.Coordinate(input_shape) * voxel_size
@@ -111,7 +110,7 @@ def predict_task(
 
         if num_workers > 1:
             worker_id = int(daisy.Context.from_env()["worker_id"])
-            logger.info(worker_id%n_gpu)
+            logger.info(worker_id % n_gpu)
             os.environ["CUDA_VISISBLE_DEVICES"] = f"{worker_id % n_gpu}"
 
             scan = gp.DaisyRequestBlocks(
@@ -146,7 +145,6 @@ def predict_task(
 
         with gp.build(pipeline):
             batch = pipeline.request_batch(predict_request)
-
 
     if num_workers > 1:
         task = daisy.Task(
@@ -185,10 +183,11 @@ if __name__ == "__main__":
 
     predict_task(
         iteration=iteration,
-        raw_file="../../data/xpress-challenge.zarr", 
-        raw_dataset="volumes/validation_raw", 
+        raw_file="../../data/xpress-challenge.zarr",
+        raw_dataset="volumes/validation_raw",
         out_file=out_file,
         out_datasets=out_datasets,
-        num_workers=n_workers, 
+        num_workers=n_workers,
         n_gpu=n_gpu,
-        voxel_size=33)
+        voxel_size=33,
+    )

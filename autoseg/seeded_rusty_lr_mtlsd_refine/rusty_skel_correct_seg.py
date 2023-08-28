@@ -13,7 +13,7 @@ def get_skel_correct_segmentation(
     out_datasets=[(f"pred_affs", len(neighborhood)), (f"pred_lsds", 10)],
     iteration="latest",
     model_path="./",
-    voxel_size:int=100,
+    voxel_size: int = 100,
 ) -> None:
     if predict_affs:
         # predict affs
@@ -25,22 +25,22 @@ def get_skel_correct_segmentation(
             out_datasets=out_datasets,
             num_workers=1,
             model_path=model_path,
-            voxel_size=voxel_size
+            voxel_size=voxel_size,
         )
 
     # rusty mws + correction using skeletons
     pp: rusty_mws.PostProcessor = rusty_mws.PostProcessor(
-            affs_file=out_file,
-            affs_dataset="pred_affs_latest",#out_datasets[0][0],
-            fragments_file=out_file,
-            fragments_dataset="frag_seg",
-            seeds_file=raw_file,
-            seeds_dataset="volumes/validation_gt_rasters",
-            seg_dataset="pred_seg",
-            n_chunk_write_frags=1,
-            erode_iterations=1
-        )
-    
+        affs_file=out_file,
+        affs_dataset="pred_affs_latest",  # out_datasets[0][0],
+        fragments_file=out_file,
+        fragments_dataset="frag_seg",
+        seeds_file=raw_file,
+        seeds_dataset="volumes/validation_gt_rasters",
+        seg_dataset="pred_seg",
+        n_chunk_write_frags=1,
+        erode_iterations=1,
+    )
+
     pp.run_corrected_segmentation_pipeline()
 
 
@@ -53,4 +53,10 @@ if __name__ == "__main__":
         iteration = "latest"
         model_path = "./"
 
-    get_skel_correct_segmentation(iteration=iteration, model_path=model_path, predict_affs=False, out_file="./validation.zarr", voxel_size=33)
+    get_skel_correct_segmentation(
+        iteration=iteration,
+        model_path=model_path,
+        predict_affs=False,
+        out_file="./validation.zarr",
+        voxel_size=33,
+    )

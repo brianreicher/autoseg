@@ -20,8 +20,8 @@ from skimage.measure import label
 
 logger = logging.getLogger(__name__)
 
-def expand_labels(labels):
 
+def expand_labels(labels):
     distance = labels.shape[0]
 
     distances, indices = distance_transform_edt(labels == 0, return_indices=True)
@@ -180,7 +180,6 @@ def segment(
     pred_f = zarr.open(pred_zarr, mode="a")
     affs = pred_f[affs_name][:]
 
-
     # run mws segmentation, seeded or unseeded
     if seeded:
         logger.info(f"Loading seeds from {seeds_zarr}/{seeds_name}")
@@ -241,19 +240,27 @@ def segment_blocks(
     alternate_dilate=True,
     dilate_footprint=ball(radius=3),
 ) -> bool:
-
     offsets = np.array(object=neighborhood)
-
 
     aff_ds: Array = open_ds(filename=aff_file, ds_name=affs_name)
     voxel_size = aff_ds.voxel_size
     dtype = aff_ds.dtype
     total_roi = aff_ds.roi
 
-    write_roi = daisy.Roi(offset=(0,)*3,shape=daisy.Coordinate(aff_ds.chunk_shape)[1:])
+    write_roi = daisy.Roi(
+        offset=(0,) * 3, shape=daisy.Coordinate(aff_ds.chunk_shape)[1:]
+    )
 
-    min_neighborhood: int = min( filter(lambda x: x != 0, [value for sublist in neighborhood for value in sublist]))
-    max_neighborhood: int = max( filter(lambda x: x != 0, [value for sublist in neighborhood for value in sublist]))
+    min_neighborhood: int = min(
+        filter(
+            lambda x: x != 0, [value for sublist in neighborhood for value in sublist]
+        )
+    )
+    max_neighborhood: int = max(
+        filter(
+            lambda x: x != 0, [value for sublist in neighborhood for value in sublist]
+        )
+    )
 
     read_roi = write_roi.grow(amount_neg=min_neighborhood, amount_pos=max_neighborhood)
 
@@ -271,11 +278,7 @@ def segment_blocks(
         )
 
         # First segment the block
-        frag_array: np.ndarray = seeded_mutex_watershed(
-            None,
-            affs_array,
-            offsets
-        )
+        frag_array: np.ndarray = seeded_mutex_watershed(None, affs_array, offsets)
 
         # # clean up
         # frag_array = remove_small_objects(frag_array, min_size=400).astype(
@@ -316,13 +319,10 @@ def segment_blocks(
 
         # Now make the unlabelled mask
         unlabelled_mask = (seg_array > 0).astype(np.uint8)
-        unlabelled_mask_ds = open_ds(
-            seg_file, "pred_unlabelled_mask", mode="a"
-        )
+        unlabelled_mask_ds = open_ds(seg_file, "pred_unlabelled_mask", mode="a")
         unlabelled_mask_ds[block.write_roi] = unlabelled_mask
 
         return True
-
 
     ds = prepare_ds(
         frag_file,

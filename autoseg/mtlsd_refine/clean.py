@@ -3,12 +3,11 @@ import zarr
 from skimage.morphology import remove_small_objects
 from skimage.measure import label
 
-for thresh in [0.6,0.7]:
-
+for thresh in [0.6, 0.7]:
     seg_ds = f"seg_{thresh}"
 
-    #f = zarr.open('validation_prediction.zarr', 'a')
-    f = zarr.open('test_prediction.zarr', 'a')
+    # f = zarr.open('validation_prediction.zarr', 'a')
+    f = zarr.open("test_prediction.zarr", "a")
 
     print("loading")
     seg = f[seg_ds][:]
@@ -26,6 +25,6 @@ for thresh in [0.6,0.7]:
     print("removing large uniques")
     seg[np.isin(seg, remove)] = 0
 
-    f[f'seg_{thresh}_filtered'] = seg
-    f[f'seg_{thresh}_filtered'].attrs['offset'] = f[seg_ds].attrs['offset']
-    f[f'seg_{thresh}_filtered'].attrs['resolution'] = f[seg_ds].attrs['resolution']
+    f[f"seg_{thresh}_filtered"] = seg
+    f[f"seg_{thresh}_filtered"].attrs["offset"] = f[seg_ds].attrs["offset"]
+    f[f"seg_{thresh}_filtered"].attrs["resolution"] = f[seg_ds].attrs["resolution"]

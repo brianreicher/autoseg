@@ -16,7 +16,6 @@ def segment_and_validate(
     checkpoint_num=420000,
     setup_num="19",
 ) -> dict:
-
     logger.info(
         msg=f"Segmenting checkpoint {model_checkpoint}, aff_model checkpoint {checkpoint_num}..."
     )
@@ -24,12 +23,14 @@ def segment_and_validate(
     # success: bool = get_validation_segmentation(iteration=model_checkpoint)
     success = True
     if success:
-        print("-----------------------------\nSuccessfully returned validation segmentation . . . now validating\n----------------------------------------------")
+        print(
+            "-----------------------------\nSuccessfully returned validation segmentation . . . now validating\n----------------------------------------------"
+        )
         try:
             logger.info(
                 f"Validating checkpoint {model_checkpoint}, aff_model checkpoint {checkpoint_num}..."
             )
-            score_dict:dict = validate(
+            score_dict: dict = validate(
                 checkpoint=model_checkpoint,
                 threshold=float(f"{checkpoint_num}.{setup_num}"),
                 ds="seg",
@@ -153,6 +154,7 @@ def validate(
     logger.info(f"\tVOI     : {score_dict['xpress_voi']}")
     logger.info(f"\tRAND    : {score_dict['xpress_rand']}")
     return score_dict
+
 
 if __name__ == "__main__":
     segment_and_validate()

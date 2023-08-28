@@ -79,21 +79,25 @@ class RandomNoiseAugment(gp.BatchFilter):
         return deps
 
     def process(self, batch, request):
-
         raw = batch.arrays[self.array]
 
-        mode = random.choice(["gaussian","poisson","none", "none"])
+        mode = random.choice(["gaussian", "poisson", "none", "none"])
 
         if mode != "none":
-            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, "Noise augmentation requires float types for the raw array (not " + str(raw.data.dtype) + "). Consider using Normalize before."
+            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, (
+                "Noise augmentation requires float types for the raw array (not "
+                + str(raw.data.dtype)
+                + "). Consider using Normalize before."
+            )
             if self.clip:
-                assert raw.data.min() >= -1 and raw.data.max() <= 1, "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
+                assert (
+                    raw.data.min() >= -1 and raw.data.max() <= 1
+                ), "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
 
 
+neighborhood: list[list[int]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-neighborhood: list[list[int]] = [[1, 0, 0],
-                                [0, 1, 0],
-                                [0, 0, 1]]
+
 def predict_task(
     iteration,
     raw_file,
@@ -180,7 +184,6 @@ def predict_task(
     block_write_roi = daisy.Roi((0,) * 3, output_size)
 
     def predict():
-
         in_channels = 1
         num_fmaps = 12
         fmap_inc_factor = 5
@@ -228,7 +231,7 @@ def predict_task(
 
         if num_workers > 1:
             worker_id = int(daisy.Context.from_env()["worker_id"])
-            logger.info(worker_id%n_gpu)
+            logger.info(worker_id % n_gpu)
             os.environ["CUDA_VISISBLE_DEVICES"] = f"{worker_id % n_gpu}"
 
             scan = gp.DaisyRequestBlocks(
@@ -263,7 +266,6 @@ def predict_task(
 
         with gp.build(pipeline):
             batch = pipeline.request_batch(predict_request)
-
 
     if num_workers > 1:
         task = daisy.Task(
@@ -302,10 +304,11 @@ if __name__ == "__main__":
 
     predict_task(
         iteration=iteration,
-        raw_file="../../data/xpress-challenge.zarr", 
-        raw_dataset="volumes/validation_raw", 
+        raw_file="../../data/xpress-challenge.zarr",
+        raw_dataset="volumes/validation_raw",
         out_file=out_file,
         out_datasets=out_datasets,
-        num_workers=n_workers, 
+        num_workers=n_workers,
         n_gpu=n_gpu,
-        voxel_size=33)
+        voxel_size=33,
+    )

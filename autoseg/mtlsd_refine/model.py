@@ -60,7 +60,6 @@ class SmoothArray(gp.BatchFilter):
         self.range = blur_range
 
     def process(self, batch, request):
-
         array = batch[self.array].data
 
         assert len(array.shape) == 3
@@ -71,9 +70,9 @@ class SmoothArray(gp.BatchFilter):
         for z in range(array.shape[0]):
             array_sec = array[z]
 
-            array[z] = np.array(
-                    gaussian_filter(array_sec, sigma=sigma)
-            ).astype(array_sec.dtype)
+            array[z] = np.array(gaussian_filter(array_sec, sigma=sigma)).astype(
+                array_sec.dtype
+            )
 
         batch[self.array].data = array
 
@@ -95,15 +94,20 @@ class RandomNoiseAugment(gp.BatchFilter):
         return deps
 
     def process(self, batch, request):
-
         raw = batch.arrays[self.array]
 
-        mode = random.choice(["gaussian","poisson","none", "none"])
+        mode = random.choice(["gaussian", "poisson", "none", "none"])
 
         if mode != "none":
-            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, "Noise augmentation requires float types for the raw array (not " + str(raw.data.dtype) + "). Consider using Normalize before."
+            assert raw.data.dtype == np.float32 or raw.data.dtype == np.float64, (
+                "Noise augmentation requires float types for the raw array (not "
+                + str(raw.data.dtype)
+                + "). Consider using Normalize before."
+            )
             if self.clip:
-                assert raw.data.min() >= -1 and raw.data.max() <= 1, "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
+                assert (
+                    raw.data.min() >= -1 and raw.data.max() <= 1
+                ), "Noise augmentation expects raw values in [-1,1] or [0,1]. Consider using Normalize before."
 
 
 in_channels = 1
@@ -117,5 +121,5 @@ unet = UNet(
     fmap_inc_factor,
     downsample_factors,
     constant_upsample=True,
-    num_heads=2
+    num_heads=2,
 )

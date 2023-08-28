@@ -16,14 +16,15 @@ def segment_and_validate(
     checkpoint_num=62500,
     setup_num="17",
 ) -> bool:
-
     logger.info(
         msg=f"Segmenting checkpoint {model_checkpoint}, aff_model checkpoint {checkpoint_num}..."
     )
     success: bool = get_validation_segmentation(iteration=model_checkpoint)
 
     if success:
-        print("-----------------------------\nSuccessfully returned validation segmentation . . . now validating\n----------------------------------------------")
+        print(
+            "-----------------------------\nSuccessfully returned validation segmentation . . . now validating\n----------------------------------------------"
+        )
         try:
             logger.info(
                 f"Validating checkpoint {model_checkpoint}, aff_model checkpoint {checkpoint_num}..."

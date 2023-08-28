@@ -17,14 +17,8 @@ from model import *
 
 
 def predict_task(
-        iteration, 
-        raw_file, 
-        raw_dataset, 
-        out_file, 
-        out_datasets,
-        num_workers=1,
-        n_gpu=1):
-   
+    iteration, raw_file, raw_dataset, out_file, out_datasets, num_workers=1, n_gpu=1
+):
     if "latest" in iteration:
         model_path = glob.glob("./model_checkpoint_*")
         model_path.sort(key=os.path.getmtime)
@@ -32,10 +26,10 @@ def predict_task(
     else:
         model_path = os.path.abspath(f"./model_checkpoint_{iteration}")
 
-    #increase = 8 * 15
-    #input_shape = [132 + increase] * 3
-    #output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
-    #print(input_shape, output_shape)
+    # increase = 8 * 15
+    # input_shape = [132 + increase] * 3
+    # output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
+    # print(input_shape, output_shape)
     input_shape = [252] * 3
     output_shape = [160] * 3
 
@@ -69,14 +63,13 @@ def predict_task(
             num_channels=channels,
             write_size=output_size,
             compressor={"id": "blosc"},
-            delete=True)
+            delete=True,
+        )
 
-
-    block_read_roi = daisy.Roi((0,)*3, input_size) - context
-    block_write_roi = daisy.Roi((0,)*3, output_size)
+    block_read_roi = daisy.Roi((0,) * 3, input_size) - context
+    block_write_roi = daisy.Roi((0,) * 3, output_size)
 
     def predict():
-
         model = MTLSDModel(unet, num_fmaps)
         model.eval()
 
@@ -98,7 +91,7 @@ def predict_task(
 
         write = gp.ZarrWrite(
             dataset_names={
-                #pred_lsds: out_datasets[0][0],
+                # pred_lsds: out_datasets[0][0],
                 pred_affs: out_datasets[0][0],
             },
             output_filename=out_file,
@@ -109,13 +102,10 @@ def predict_task(
             os.environ["CUDA_VISISBLE_DEVICES"] = f"{worker_id % n_gpu}"
 
             scan = gp.DaisyRequestBlocks(
-                    scan_request, 
-                    {
-                      raw: "read_roi",
-                      pred_lsds: "write_roi",
-                      pred_affs: "write_roi"
-                    }, 
-                    num_workers=1)
+                scan_request,
+                {raw: "read_roi", pred_lsds: "write_roi", pred_affs: "write_roi"},
+                num_workers=1,
+            )
 
         else:
             scan = gp.Scan(scan_request)
@@ -127,10 +117,10 @@ def predict_task(
             + gp.Unsqueeze([raw])
             + predict
             + gp.Squeeze([pred_affs])
-            #+ gp.Squeeze([pred_lsds])
+            # + gp.Squeeze([pred_lsds])
             + gp.Normalize(pred_affs)
             + gp.IntensityScaleShift(pred_affs, 255, 0)
-            #+ gp.IntensityScaleShift(pred_lsds, 255, 0)
+            # + gp.IntensityScaleShift(pred_lsds, 255, 0)
             + write
             + scan
         )
@@ -140,23 +130,22 @@ def predict_task(
         if num_workers == 1:
             predict_request[raw] = total_input_roi
             predict_request[pred_affs] = total_output_roi
-            #predict_request[pred_lsds] = total_output_roi
+            # predict_request[pred_lsds] = total_output_roi
 
         with gp.build(pipeline):
             batch = pipeline.request_batch(predict_request)
 
-
     if num_workers > 1:
-
         task = daisy.Task(
-                "PredictBlockwiseTask",
-                total_input_roi,
-                block_read_roi,
-                block_write_roi,
-                process_function=predict,
-                num_workers=num_workers,
-                max_retries=3,
-                fit="shrink")
+            "PredictBlockwiseTask",
+            total_input_roi,
+            block_read_roi,
+            block_write_roi,
+            process_function=predict,
+            num_workers=num_workers,
+            max_retries=3,
+            fit="shrink",
+        )
 
         done = daisy.run_blockwise([task])
 
@@ -165,6 +154,7 @@ def predict_task(
 
     else:
         predict()
+
 
 if __name__ == "__main__":
     iteration = "latest"
@@ -177,10 +167,5 @@ if __name__ == "__main__":
     n_gpu = 1
 
     predict_task(
-            iteration, 
-            raw_file, 
-            raw_dataset, 
-            out_file, 
-            out_datasets,
-            n_workers,
-            n_gpu)
+        iteration, raw_file, raw_dataset, out_file, out_datasets, n_workers, n_gpu
+    )

@@ -26,8 +26,7 @@ out_file = "./raw_predictions.zarr"
 iteration = "latest"
 
 
-def get_segmentation(predict_affs:bool=True) -> None:
-
+def get_segmentation(predict_affs: bool = True) -> None:
     affs_ds: str = f"pred_affs_{iteration}"
 
     if predict_affs:
@@ -37,16 +36,16 @@ def get_segmentation(predict_affs:bool=True) -> None:
             raw_file=raw_file,
             raw_dataset=raw_dataset,
             out_file=out_file,
-            out_datasets=[(affs_ds,12)],
+            out_datasets=[(affs_ds, 12)],
             num_workers=1,
-            n_gpu=1)
+            n_gpu=1,
+        )
 
     # mws + correction using skeletons
     segment_correct_blocks()
 
 
 def pipeline(iterations, warmup=5000, save_every=1000):
-    
     raw = gp.ArrayKey("RAW")
     labels = gp.ArrayKey("LABELS")
     labels_mask = gp.ArrayKey("LABELS_MASK")
@@ -54,19 +53,19 @@ def pipeline(iterations, warmup=5000, save_every=1000):
     pred_affs = gp.ArrayKey("PRED_AFFS")
     gt_affs = gp.ArrayKey("GT_AFFS")
     affs_weights = gp.ArrayKey("AFFS_WEIGHTS")
-    gt_affs_mask = gp.ArrayKey("AFFS_MASK") 
+    gt_affs_mask = gp.ArrayKey("AFFS_MASK")
     pred_lsds = gp.ArrayKey("PRED_LSDS")
     gt_lsds = gp.ArrayKey("GT_LSDS")
     gt_lsds_mask = gp.ArrayKey("GT_LSDS_MASK")
 
     model = MTLSDModel(unet, num_fmaps)
-    loss = WeightedMTLSD_MSELoss()#aff_lambda=0)
+    loss = WeightedMTLSD_MSELoss()  # aff_lambda=0)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.5e-4, betas=(0.95, 0.999))
 
-    #increase = 8 * 3
-    #input_shape = [132 + increase] * 3
-    #output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
-    #print(input_shape, output_shape)
+    # increase = 8 * 3
+    # input_shape = [132 + increase] * 3
+    # output_shape = model.forward(torch.empty(size=[1, 1] + input_shape))[0].shape[2:]
+    # print(input_shape, output_shape)
     input_shape = [156] * 3
     output_shape = [64] * 3
 
@@ -122,9 +121,8 @@ def pipeline(iterations, warmup=5000, save_every=1000):
     )
     gt_source += gp.MergeProvider()
     gt_source += gp.RandomLocation(mask=labels_mask, min_masked=0.5)
-   
+
     def get_training_pipeline():
-        
         request = gp.BatchRequest()
 
         request.add(raw, input_size)
@@ -159,7 +157,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
 
         training_pipeline += gp.IntensityAugment(raw, 0.9, 1.1, -0.1, 0.1)
 
-        training_pipeline += SmoothArray(raw, (0.0,1.0))
+        training_pipeline += SmoothArray(raw, (0.0, 1.0))
 
         training_pipeline += AddLocalShapeDescriptor(
             labels,
@@ -179,7 +177,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
             labels_mask=labels_mask,
             unlabelled=unlabelled,
             affinities_mask=gt_affs_mask,
-            dtype=np.float32
+            dtype=np.float32,
         )
 
         training_pipeline += gp.BalanceLabels(gt_affs, affs_weights, mask=gt_affs_mask)
@@ -218,11 +216,9 @@ def pipeline(iterations, warmup=5000, save_every=1000):
                 pred_lsds: "pred_lsds",
                 gt_affs: "gt_affs",
                 pred_affs: "pred_affs",
-                affs_weights: "affs_weights"
+                affs_weights: "affs_weights",
             },
-            dataset_dtypes={
-                gt_affs: np.float32
-            },
+            dataset_dtypes={gt_affs: np.float32},
             output_filename="batch_{iteration}.zarr",
             every=save_every,
         )
@@ -238,10 +234,7 @@ def pipeline(iterations, warmup=5000, save_every=1000):
         model.train()
     elif warmup > 0:
         training_pipeline, request = get_training_pipeline()
-        pipeline = (
-            gt_source
-            + training_pipeline
-        )
+        pipeline = gt_source + training_pipeline
 
         with gp.build(pipeline):
             for i in trange(warmup):

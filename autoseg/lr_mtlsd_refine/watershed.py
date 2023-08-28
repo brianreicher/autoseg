@@ -34,7 +34,6 @@ def watershed_from_affinities(
         (fragments, max_id, seeds) if return_seeds == True"""
 
     if fragments_in_xy:
-
         mean_affs = 0.5 * (affs[1] + affs[2])
         depth = mean_affs.shape[0]
 
@@ -44,7 +43,6 @@ def watershed_from_affinities(
 
         id_offset = 0
         for z in range(depth):
-
             boundary_mask = mean_affs[z] > 0.5 * max_affinity_value
             boundary_distances = distance_transform_edt(boundary_mask)
 
@@ -66,7 +64,6 @@ def watershed_from_affinities(
             ret += (seeds,)
 
     else:
-
         boundary_mask = np.mean(affs, axis=0) > 0.5 * max_affinity_value
         boundary_distances = distance_transform_edt(boundary_mask)
 
@@ -82,7 +79,6 @@ def watershed_from_affinities(
 def watershed_from_boundary_distance(
     boundary_distances, return_seeds=False, id_offset=0, min_seed_distance=10
 ):
-
     max_filtered = maximum_filter(boundary_distances, min_seed_distance)
     maxima = max_filtered == boundary_distances
     seeds, n = mahotas.label(maxima)
@@ -100,11 +96,11 @@ def watershed_from_boundary_distance(
 
     return ret
 
-if __name__ == '__main__':
 
+if __name__ == "__main__":
     affs_ds = "pred_affs_30000"
 
-    f = zarr.open('test_prediction.zarr', 'a')
+    f = zarr.open("test_prediction.zarr", "a")
 
     print("loading")
     affs = f[affs_ds][:]
@@ -115,6 +111,6 @@ if __name__ == '__main__':
     frags = watershed_from_affinities(affs)[0]
 
     print("writing")
-    f['frags'] = frags
-    f['frags'].attrs['offset'] = f[affs_ds].attrs['offset']
-    f['frags'].attrs['resolution'] = f[affs_ds].attrs['resolution']
+    f["frags"] = frags
+    f["frags"].attrs["offset"] = f[affs_ds].attrs["offset"]
+    f["frags"].attrs["resolution"] = f[affs_ds].attrs["resolution"]
