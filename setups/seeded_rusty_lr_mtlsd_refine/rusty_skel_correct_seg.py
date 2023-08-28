@@ -1,7 +1,6 @@
 import sys
 from predict import predict_task
 import rusty_mws
-from funlib.geometry import Coordinate
 import numpy as np
 from model import neighborhood
 
