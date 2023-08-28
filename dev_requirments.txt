@@ -1,5 +1,5 @@
     numpy
-    pytorch-cuda=11.7
+    pytorch-cuda
     pytorch
     nvidia
     torchvision
