@@ -7,6 +7,7 @@ import torch
 from funlib.learn.torch.models import UNet, ConvPass
 from funlib.persistence import prepare_ds
 import daisy
+import random
 
 
 logging.basicConfig(level=logging.INFO)
@@ -14,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 
 
-neighborhood: list[list[int]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-
+neighborhood: list[list[int]] = [[1, 0, 0],
+                                [0, 1, 0],
+                                [0, 0, 1]]
 def predict_task(
     iteration,
     raw_file,
     raw_dataset,
     out_file="raw_prediction.zarr",
-    out_datasets=[(f"pred_affs", len(neighborhood)), (f"pred_lsds", 10)],
+    out_datasets=[(f"pred_affs", len(neighborhood))],
     num_workers=1,
     n_gpu=1,
     model_path="./",
@@ -74,7 +75,6 @@ def predict_task(
 
     raw = gp.ArrayKey("RAW")
     pred_affs = gp.ArrayKey("PRED_AFFS")
-    pred_lsds = gp.ArrayKey("PRED_LSDS")
 
     source = gp.ZarrSource(
         raw_file, {raw: raw_dataset}, {raw: gp.ArraySpec(interpolatable=True)}
@@ -103,6 +103,7 @@ def predict_task(
     block_write_roi = daisy.Roi((0,) * 3, output_size)
 
     def predict():
+
         in_channels = 1
         num_fmaps = 12
         fmap_inc_factor = 5
@@ -128,34 +129,31 @@ def predict_task(
 
         scan_request.add(raw, input_size)
         scan_request.add(pred_affs, output_size)
-        scan_request.add(pred_lsds, output_size)
 
         pred = gp.torch.Predict(
             model,
             checkpoint=model_path,
             inputs={"input": raw},
             outputs={
-                0: pred_lsds,
-                1: pred_affs,
+                0: pred_affs,
             },
         )
 
         write = gp.ZarrWrite(
             dataset_names={
                 pred_affs: out_datasets[0][0],
-                pred_lsds: out_datasets[1][0],
             },
             output_filename=out_file,
         )
 
         if num_workers > 1:
             worker_id = int(daisy.Context.from_env()["worker_id"])
-            logger.info(worker_id % n_gpu)
+            logger.info(worker_id%n_gpu)
             os.environ["CUDA_VISISBLE_DEVICES"] = f"{worker_id % n_gpu}"
 
             scan = gp.DaisyRequestBlocks(
                 scan_request,
-                {raw: "read_roi", pred_lsds: "write_roi", pred_affs: "write_roi"},
+                {raw: "read_roi", pred_affs: "write_roi"},
                 num_workers=2,
             )
 
@@ -169,10 +167,8 @@ def predict_task(
             + gp.Unsqueeze([raw])
             + pred
             + gp.Squeeze([pred_affs])
-            + gp.Squeeze([pred_lsds])
             + gp.Normalize(pred_affs)
             + gp.IntensityScaleShift(pred_affs, 255, 0)
-            + gp.IntensityScaleShift(pred_lsds, 255, 0)
             + write
             + scan
         )
@@ -185,6 +181,7 @@ def predict_task(
 
         with gp.build(pipeline):
             batch = pipeline.request_batch(predict_request)
+
 
     if num_workers > 1:
         task = daisy.Task(
@@ -214,8 +211,7 @@ if __name__ == "__main__":
     raw_dataset = "volumes/validation_raw"
     out_file = "validation.zarr"
     out_datasets = [
-        (f"pred_affs_{iteration}", len(neighborhood)),
-        (f"pred_lsds_{iteration}", 10),
+        (f"pred_affs_{iteration}", 6),
     ]
 
     n_workers = 1
@@ -223,11 +219,10 @@ if __name__ == "__main__":
 
     predict_task(
         iteration=iteration,
-        raw_file="../../data/xpress-challenge.zarr",
-        raw_dataset="volumes/validation_raw",
+        raw_file="../../data/xpress-challenge.zarr", 
+        raw_dataset="volumes/validation_raw", 
         out_file=out_file,
         out_datasets=out_datasets,
-        num_workers=n_workers,
+        num_workers=n_workers, 
         n_gpu=n_gpu,
-        voxel_size=33,
-    )
+        voxel_size=33)
